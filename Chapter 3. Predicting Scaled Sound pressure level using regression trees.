@@ -1,0 +1,167 @@
+#--------------------------------------------------------------------------------------------------------------
+# Regression Trees analysis : Nasa airfoil
+#-----------------------------------------------------------------------------------------------------------------
+library(tree)
+library(rpart)
+library(rpart.plot)
+#--------------------------------------------------------------------------------------------------------------
+# Construct a regression Tree (Example 3.1.4)
+#-----------------------------------------------------------------------------------------------------------------
+tree_airfoil <- rpart(SSPL ~., data=trains , minsplit=20,method = ’anova’)
+tree_airfoil_plot <- rpart.plot(tree_airfoil, type=2, digits=2,fallen.leaves = TRUE)
+tree_airfoil_plot
+
+tree_airfoil
+
+tree_airfoil <- rpart(SSPL ~., data=trains , method = ’anova’)
+tree_airfoil_plot <- rpart.plot(tree_airfoil, type=2, digits=2,fallen.leaves = TRUE)
+
+> tree_airfoil
+n= 1202
+node), split, n, deviance, yval
+* denotes terminal node
+1) root 1202 58074.6100 124.7516
+.....
+15) U_infinity>=47.55 245 4166.4310 129.5422
+
+#One sees from the above output that the split number 15.)
+#above corresponds to U-{infinity} $ >= 48$ and therefore $R_{13}$.
+#One can read directly that RSS_13= 4166.4310 and n(R_13)=245 (see, example 3.1.4.)
+
+summary(tree_airfoil)
+tree_airfoil
+summary(tree_airfoil) # regression tree summary
+cp <- printcp(tree_airfoil) # Cross validation summary other type of summary
+cp
+tree_airfoil$variable.importance
+
+# Relative error
+RE <- sum(residuals(tree_airfoil)^2)/58074.6100 # RSS_total/ deviance of root node
+RE # 0.4029909
+
+# Training mean squared error computations
+# Predicted values for training set inputs
+tree_airfoil_predict_train <- predict(tree_airfoil, trains)
+MSE_train_tree <- mean((trains$SSPL- tree_airfoil_predict_train)^2)
+MSE_train_tree # Training error of 19.47
+MSE_func(tree_airfoil)
+
+# Testing mean squared error
+tree_airfoil_predict_test <- predict(tree_airfoil, tests)
+MSE_test_tree <- mean((tests$SSPL- tree_airfoil_predict_test)^2)
+MSE_test_tree # Testing error of 22.38759
+
+# Find best subtree
+min_cp <- tree_airfoil$cptable[which.min(tree_airfoil$cptable[,"xerror"]),"CP"]
+min_cp
+pruned_airfoil <- prune(tree_airfoil, min_cp)
+rpart.plot(pruned_airfoil, fallen.leaves = FALSE ,digits = 3)
+
+#--------------------------------------------------------------------------------------------------------------
+# Varying level of complexity of a regression Tree (240 models evaluated )
+#-----------------------------------------------------------------------------------------------------------------
+# function to get relative error for this specific training set
+
+RE_ERROR <- function(x){
+RSS_TOTAL <- sum(residuals(x)^2)
+ROOT_DEVIANCE <- 58074.6100 # Same values for all models.
+RE_err <- RSS_TOTAL/ROOT_DEVIANCE
+return(RE_err)
+}
+
+# function to get mean squared error of a model on some data set
+MSE_func <- function(x){
+mse <- sum(resid(x)^2)/(length(resid(x)))
+return(mse)
+}
+
+MSE_func(tree_airfoil)
+
+# Generate different regression tree model with different level of flexibility
+minsplitsr <- seq(2,1200, by= 5) # sequence of min splits
+minsplitsr
+
+hyper_grid <- expand.grid(minsplits = minsplitsr)
+hyper_grid$minsplits
+dim(hyper_grid) #1199 x 1 data frame
+
+modelds <- list()
+for (i in 1:nrow(hyper_grid)) {
+# train a model and store in the list
+modelds[[i]] <- rpart(
+formula = SSPL ~ .,
+data = trains,
+method = "anova",
+minsplit= (hyper_grid$minsplits[i])
+)
+}
+
+tested = list() # Create empty list of tested models
+test_mse_tree= list() # Create empty list of test mse values
+
+# compute predicted values for test set and test error for each model
+for (i in 1:240){
+tested[[i]] <- predict(modelds[[i]], tests) # Predicted value on test set of each model
+test_mse_tree[[i]] <- mean((tests$SSPL- tested[[i]])^2) # Test mean squared error for the i-th model
+}
+
+# Find Relative error and Training error for all models estimated by using sapply(.)
+REER <- sapply(modelds, FUN= RE_ERROR) # Relative errors
+MSER <- sapply(modelds, FUN= MSE_func) # Mean squared errors
+
+# plot relative error
+plot(minsplitsr, REER, type = ’l’, col =’blue’, xlab=’minsplit’ ,
+ylab = ’Relative error: ERR(tree)’, main = ’Relative error for different
+values of minsplit parameter’)
+points( minsplitsr,REER, col=’black’, pch= 10)# ADD POINTS
+
+# Find which models correspond to the lowest value of the testing error
+s <- min(as.numeric(test_mse_tree)) # minimum value of test error is 21.72 on test set
+which(test_mse_tree==s) # Seems that models (13) and 14 have lower test MSE.
+minsplitsr[13] # minsplit= 62
+minsplitsr[14]# minsplit= 67
+
+# This means regression trees with minsplit= 62 and minsplit=67 have the lower test MSE.
+# plot training and testing error for all models
+par(mfrow=c(1,1))
+plot(minsplitsr, MSER,type = ’l’, col=’blue’ , xlab = ’minsplit’, ylab=’Error’,
+main= ’Training and testing mean squared error for different
+regression trees with different levels of flexibility’)
+lines(minsplitsr, test_mse_tree, col =’red’, xlab=’minsplit’ ) # add testing error graph
+
+legend("bottomright",legend = c(’Training error (MSE_train,tree)’, ’Testing error (MSE_test,tree)’,’Minimum test
+error point’),col=c(’blue’,’red’, ’black’), lty = c(1,1, NA), pch = c(NA,NA,4) , cex=1.4)
+points(62,s, pch= 4, cex= 3.1, col=’black’)
+identify(minsplitsr,test_mse_tree)
+
+# see some features of models
+summary(modelds[[13]])
+rpart.plot(modelds[[13]])
+
+# It seems that the regression tree automatically drawn by R have lowest test value
+#among the majority
+# of regression trees constructed on this training set.
+
+
+
+
+#--------------------------------------------------------------------------------------------------------------
+# Simulation: The overfitting problem: Example 3.1.5
+#-----------------------------------------------------------------------------------------------------------------
+set.seed(1)
+n <- 4
+x
+x1 <- seq(0, 1, length= n)
+x2 <- rnorm(n,0,100)
+Tx <- sin(2 * pi * x1*x2)
+y <- Tx + rnorm(n,mean = 0, sd = 0.3) # # simulated output values
+simul_train <- as.data.frame(cbind(x1,x2,y)) # Create dataframe representing the observations couples (x_i,y_i)
+simul_train
+simul_tree <- rpart(y ~., data= simul_train, method = ’anova’, minsplit= 2)
+75
+simul_tree
+rpart.plot(simul_tree)
+predict(simul_tree)
+MSE_func(simul_tree) # MSE_train = 0
+RE_ERROR(simul_train) # RE_tree = 0
+summary(simul_tree)
