@@ -1,0 +1,74 @@
+##################################################################
+##################################################################
+#Random Forest example 5.1.2
+###################################################################
+###################################################################
+
+# Random forest procedure using the package random forests
+
+set.seed(1230)
+rf.airfoil <- randomForest (SSPL ~., data = trains , mtry=4, nodesize=2,
+replace = TRUE, ntree=500)
+
+# prediction given by random forest estimator on training set ’trains’.
+
+pred_rf_T <- predict(rf.airfoil, newdata=trains, predict.all = TRUE)
+pred_rf_train <- pred_rf_T$aggregate # Get predictions of random forest by averaging predictions for all trees
+
+#prediction given by random forest estimator on testing set ’tests’
+pred_rf_Te <- predict(rf.airfoil,newdata= tests, predict.all = TRUE)
+pred_rf_test <- pred_rf_Te$aggregate
+
+# Training mean squared error of bag.airfoil
+MSE_rf_trees <- mean((trains$SSPL- pred_rf_train)^2)
+MSE_rf_trees # Training mean squared error MSE_{train} of 0.5598269
+
+# Testing mean squared error
+MSE_test_rf_trees <- mean((tests$SSPL- pred_rf_test)^2)
+MSE_test_rf_trees # MSE_{test} of 3.188559
+
+#################################################################
+##################################################################
+#Random Forest example 5.2.1
+###################################################################
+###################################################################
+# Generate different 500 random forest models with 500 trees
+# Generate different random forest modelS with different level trees B
+# Note that this simulation takes some time to run completely
+
+B <- seq(2,1000, by= 2) # sequence of trees
+hyper_gridforest <- expand.grid(ntree = B) # Creat a hypergrid
+hyper_gridforest$ntree
+dim(hyper_gridforest)
+
+# train a random forest model and store it in a list
+
+models_forest <- list()
+for (i in 1:nrow(hyper_gridforest)) {
+models_forest[[i]] <- randomForest(
+formula= SSPL ~ .,
+data=trains,
+ntree=hyper_gridforest$ntree[i],
+mtry=4,
+nodesize=2 )
+}
+
+models_forest
+tests_forest_simul <- list()
+tests_forest_simul_error <- list()
+
+# Predicted value on test set of each model
+
+for (i in 1:nrow(hyper_gridforest)){
+tests_forest_simul[[i]] <- predict(models_forest[[i]],
+newdata= tests, predict.all= TRUE)$aggregate
+tests_forest_simul_error[[i]] <- mean((tests$SSPL- tests_forest_simul[[i]])^2)
+
+# Test mean squared error for the i-th model
+}
+tests_forest_simul_error
+par(mfrow=c(1,1))
+plot(B, tests_forest_simul_error,type = ’l’, col=’blue’ , xlab = ’Trees (B)’,
+ylab=’ Error ’, main= ’Error vs tree size’)
+legend("topright", legend = c(’Test error’),
+col=c(’blue’), lty = c(1,1))
