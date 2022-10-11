@@ -1,0 +1,133 @@
+# Chapter 2: Statistical learning and model adequacy
+##%-----------------------------------------------------------------------------------------------------
+# 1. Read the data (airfoil data set)
+#%----------------------------------------------------------------------------------------------------
+airfoil <- read.csv(’C:/Users/MAMSL/Downloads/AirfoilSelfNoise.csv’)
+airfoil
+dim(airfoil) # n = 1503 observations, p= 5 predictors.
+
+#%-----------------------------------------------------------------------------------------------------
+# 1. Create a training set and test set:
+#%----------------------------------------------------------------------------------------------------
+
+set.seed(123)
+h <- runif(nrow(airfoil)) # generate n numbers from some uniform distribution
+airfoilr<- airfoil[order(h),] # randomized training set
+dim(airfoilr)
+trains <- airfoilr[1:1202,] #training set
+tests <- airfoilr[1203:1503,] #testing set
+dim(tests) # 301 x 6
+dim(trains) # 1202 x 6
+#%----------------------------------------------------------------------------
+#Graphical training set example 2.1.2
+#%----------------------------------------------------------------------------
+#For example 2.1.2 , we take p=1 and n= 50 from the training set.
+train_example <- trains[,5:6] # example training set
+plot(train_example[1:50,],
+main=’Scaled sound pressure level vs Suction side displacement thickness’, color=’blue’,
+pch=20, xlab= ’delta (in dB)’ ,ylab=’SSPL (in m)’)
+dim(train_example) # n=1202 p=2
+#%--------------------------------------------------------------------------
+# 2.Linear regression (Without scaling)
+#%--------------------------------------------------------------------------
+# fitting linear model on training set called trains
+model_airfoil <- lm(SSPL~ f+alpha+c+U_infinity+delta, data =trains )
+# linear regression summary
+summary(model_airfoil)
+par(mfrow=c(2,2)) # 2 by 2 window
+plot(model_airfoil) # Give graphs to verify the three assumptions of a good linear model.
+# Training error
+MSE_train = mean((trains$SSPL- model_airfoil$fitted.values)^2)
+MSE_train # MSE_train = 23.47078
+#Other possible manner to compute the training error is using the
+#regression residuals and averaging them
+n <- dim(trains)[1]
+d <- sum(model_airfoil$residuals^2)/n
+d # d = 23.47078 Same results as before
+
+#Testing error
+par(mfrow=c(1,1))
+input_test <- tests[,1:5] # separate inputs from the output SSPL in testing set.
+T_hat <- predict(model_airfoil,input_test) # prediction on input test data by the linear fitted model
+Y_test <- tests$SSPL # output values SSPL on test set
+MSE_test <- mean((T_hat-tests$SSPL)^2) # MSE_test computed
+MSE_test # MSE_test = 21.33534
+
+#---------------------------------------------------------------------------------------
+# Plot the predicted values vs the actual values of the test sets
+#---------------------------------------------------------------------------------------
+plot(T_hat,Y_test, col= ifelse(T_hat == T_hat[25], "green", "black"),
+pch=ifelse(T_hat == T_hat[25], 19, 1),
+cex=ifelse(T_hat == T_hat[25], 1.4, 1),xlab = ’Predicted output value (T_hat)’,
+ylab= ’True test output value (y)’, main = ’True output values vs predicted values on
+the testing set for the same inputs ’)
+
+line <- abline(0,1, col=’red’) # line T(x)=x giving some indication of relative distance between predicted values vs actual values
+identify(T_hat,Y_test) # identify some points close to the line and check their output values afterwards.
+Y_test[297] # y= 118.084
+T_hat[297] # T_hat= 117.9099
+Y_test[25] # y= 122.845
+T_hat[25] # T_hat= 122.8342
+# Very close observations indeed for the 25th predicted output.
+
+#--------------------------------------------------------------------------------------------------------------
+# Simulation: Bias-Variance Trade-off
+#-----------------------------------------------------------------------------------------------------------------
+# define function
+n <- 100
+x <- seq(0, 1, length= n)
+Tx <- sin(2 * pi * x)
+Tx
+# generate noisy data
+set.seed(1)
+y <- Tx + rnorm(n,mean = 0, sd = 0.3)
+# Divide between training and testing outputs
+datasimul <- data.frame(x,y) # Create data.frame
+train_simul <- datasimul[1:80,] #training set
+test_simul <- datasimul[81:100,] # Testing set
+# plot data and T(x)
+plot(train_simul)
+lines(x, Tx, lwd = 2) # T(x)
+legend("topright", legend = "T(x)", lty = 1, lwd = 2, bty = "n")
+
+# Linear model on data
+ml <- lm(y~x ,data = train_simul)
+summary(ml)
+abline(ml, col=’red’)
+legend("topright", legend = c(’T(x)’,"Linear fitted line",
+’Smoothing spline 1’,’Smoothing spline 2’), c(lty = 1,lty=1,lty=1,lty=2) , lwd=2,
+col=c(’black’,’red’,’green4’,’navy’))
+
+# Non linear fitting (smoothing spline 1)
+non_linear_fit <- smooth.spline(train_simul)
+non_linear_fit
+lines(x[1:80], non_linear_fit$y, lty = 1, col = ’green4’, lwd = 2)
+pred_ss1 <- predict(non_linear_fit,x[1:80])
+# Prediction on training inputs of the red smoothing spline
+
+# Non linear fitting (smoothing spline 2)
+non_linear_fit2 <- smooth.spline(train_simul,spar = 0.0000001)
+non_linear_fit2
+lines(x[1:80], non_linear_fit2$y, lty = 1, col = ’navy’, lwd = 2)
+pred_ss2 <- predict(non_linear_fit2,x[1:80]) # Prediction on training inputs
+of the blue smoothing spline
+# training error 3 models
+MSE_train = mean((train_simul$y- ml$fitted.values)^2) # training error for linear model
+
+MSE_train # MSE_train = 0.2417237
+MSE_train_ss1 = mean((train_simul$y-pred_ss1$y)^2) #training error for smoothing spline 1
+MSE_train_ss1 # 0.07083181
+MSE_train_ss2 <- mean((train_simul$y-pred_ss2$y)^2) # training error for smoothing spline 2
+MSE_train_ss2 # 0.02419351
+
+# Testing error 3 models
+# new smoothing spline prediction on test inputs:
+pred_ss1_test <- predict(non_linear_fit,x[81:100])
+pred_ss2_test <- predict(non_linear_fit2,x[81:100])
+ml_testr <- lm(y~x, data= test_simul)
+MSE_test = mean((test_simul$y- ml_testr$fitted.values)^2) # for linear model
+MSE_test # MSE_test = 0.06327598
+MSE_test_ss1 = mean((test_simul$y-pred_ss1_test$y)^2) #testing error for smoothing spline 1
+MSE_test_ss1 # 1.238867
+MSE_test_ss2 <- mean((test_simul$y-pred_ss2_test$y)^2) # testing error for smoothing spline 2
+MSE_test_ss2 # 59.10941
