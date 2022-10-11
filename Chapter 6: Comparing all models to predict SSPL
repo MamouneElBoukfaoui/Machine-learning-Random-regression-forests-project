@@ -1,0 +1,31 @@
+####################################################################
+##################################################################
+# Conclusion
+
+###################################################################
+###################################################################
+# Create 2 by 2 plot of predicted vs actual test values for all models studied
+par(mfrow=c(2,2))
+
+#Linear Model
+plot(T_hat,Y_test,xlab = ’Predicted output value (T_hat)’,ylab= ’True test output value (y)’,
+main = ’Mutltiple linear regression’)
+line <- abline(0,1, col=’red’) # line T(x)=x
+
+#regression trees
+plot(tree_airfoil_predict_test,tests$SSPL, xlab = ’Predicted output value (T_hat)’,
+ylab= ’True test output value (y)’,
+main = ’ Regression trees ’)
+line <- abline(0,1, col=’red’) # line T(x)=x
+
+# Bagged trees
+plot(pred_Bag_Test,tests$SSPL,xlab = ’Predicted output value (T_hat)’,
+ylab= ’True test output value (y)’,
+main = ’Bagged Trees (i.e., random forest with: mtry=5,nodesize=5)’)
+line <- abline(0,1, col=’red’) # line T(x)=x
+
+# Random forests
+plot(pred_rf_test,tests$SSPL,xlab = ’Predicted output value (T_hat)’,
+ylab= ’True test output value (y)’,
+main = ’Random forest (mtry=4,nodesize=2)’)
+line <- abline(0,1, col=’red’)# line T(x)=x
