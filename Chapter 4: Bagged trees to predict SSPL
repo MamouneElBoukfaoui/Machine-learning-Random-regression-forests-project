@@ -1,0 +1,57 @@
+# Chapter 4 bagged trees
+library (randomForest)
+
+# Bagging procedure using the package random forests
+set.seed(1203)
+bag.airfoil <- randomForest (SSPL ~., data = trains , mtry = 5,replace = TRUE, ntree= 500)
+bag.airfoil
+
+plot(bag.airfoil, col=’red’, main = ’bag.airfoil’)
+
+# plot training MSE values against number B of trees used
+bag.airfoil$mse # training MSE of each regression tree
+bag.airfoil$rsq # R squared
+
+# prediction given by bagged trees estimator on training set ’trains’.
+
+pred_Bag_Training <- predict(bag.airfoil,trains)
+
+#prediction given by bagged trees estimator on testing set ’tests’
+
+pred_Bag_Test <- predict(bag.airfoil,tests)
+
+# Training mean squared error of bag.airfoil
+
+MSE_bagged_trees <- mean((trains$SSPL- pred_Bag_Training)^2)
+MSE_bagged_trees # Training mean squared error of MSE_{train} = 0.9411702
+
+# Testing mean squared error
+MSE_test_bagged_trees <- mean((tests$SSPL- pred_Bag_Test)^2)
+MSE_test_bagged_trees # MSE_{test} of 3.582995.
+
+#---------------------------------------------------------------------------------------
+# Plot the predicted values given by bagged trees vs the actual values of the test sets
+#---------------------------------------------------------------------------------------
+plot(pred_Bag_Test,tests$SSPL,,xlab = ’Predicted output value (T_hat_bag_tree)’,
+ylab= ’True test output value (y)’, main = ’True output values vs predicted bagged trees
+values on the testing set for the same inputs ’)
+line <- abline(0,1, col=’red’) # line T(x)=x giving some indication
+#of relative distance between predicted values vs actual values
+#---------------------------------------------------------------------------------------
+# What happens if we try to decrease the number
+of trees to less than 500 ? (try 25 trees of brieman)
+#---------------------------------------------------------------------------------------
+bag.airfoil.moretrees <- randomForest (SSPL ~., data = trains ,
+mtry = 5, importance = TRUE, ntree= 25 )
+bag.airfoil.moretrees
+pred_Bag_Training_moretrees <- predict(bag.airfoil.moretrees,trains)
+pred_Bag_Training_moretrees
+#prediction given by bagged trees estimator on testing set ’tests’
+pred_Bag_Test.moretrees <- predict(bag.airfoil.moretrees,tests)
+pred_Bag_Test.moretrees
+# Training mean squared error of bag.airfoil
+MSE_bagged_trees.moretrees <- mean((trains$SSPL- pred_Bag_Training_moretrees)^2)
+MSE_bagged_trees.moretrees # Training mean squared error of MSE_{train} = 1.03
+# Testing mean squared error
+MSE_test_bagged_trees.moretrees <- mean((tests$SSPL- pred_Bag_Test.moretrees)^2)
+MSE_test_bagged_trees.moretrees # MSE_{test} of 3.629013
